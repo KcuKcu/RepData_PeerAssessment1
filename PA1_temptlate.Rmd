@@ -1,0 +1,122 @@
+---
+title: "RepData_PeerAssessment1"
+output: html_document
+---
+##Introduction
+
+It is now possible to collect a large amount of data about personal movement using activity monitoring devices such as a Fitbit, Nike Fuelband, or Jawbone Up. These type of devices are part of the “quantified self” movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. But these data remain under-utilized both because the raw data are hard to obtain and there is a lack of statistical methods and software for processing and interpreting the data.
+
+This assignment makes use of data from a personal activity monitoring device. This device collects data at 5 minute intervals through out the day. The data consists of two months of data from an anonymous individual collected during the months of October and November, 2012 and include the number of steps taken in 5 minute intervals each day.
+
+
+###Loading and preprocessing the data
+
+I load the data and transform the data with dates 
+
+```{r}
+activity <- read.csv("activity.csv")
+activity$date <- as.Date(activity$date)
+```
+
+After I loaded data, I need to look at it to make sure, that data was loaded good
+
+
+You can also embed plots, for example:
+
+```{r}
+head(activity)
+str(activity)
+```
+
+###What is mean total number of steps taken per day?
+
+For this part of the assignment, I ignore the missing values in the dataset.
+
+First, I calculated  the total number of steps taken per day
+
+```{r}
+steps <- aggregate(steps ~ date,data = activity, FUN = sum) 
+head(steps)
+```
+
+
+I made a histogram of the total number of steps taken each day
+
+```{r}
+hist(steps$steps,col = "red", main = "Steps per day", 
+     xlab =  "Steps")
+```
+
+I calculated the mean and median of the total number of steps taken per day
+
+```{r}
+mean(steps$steps)
+median(steps$steps)
+```
+
+###What is the average daily activity pattern?
+
+I calculated the average number of steps per each interval.
+
+```{r}
+int <- aggregate(steps ~ interval,data = activity, FUN = mean)
+```
+After, I made a time series plot, of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis).
+```{r}
+plot(int$interval, int$steps, type = "l", main = "Steps per Interval",
+     xlab = "Interval", ylab = "Steps")
+```
+
+To find wich interval has the maximum number of steps, I do next:
+
+```{r}
+int$interval[which.max(int$steps)]
+```
+
+###Imputing missing values
+
+I calculated the total number of missing values in the dataset
+
+```{r}
+sum(is.na(activity$steps))
+```
+
+For fill all this NA, I decided use the mean for that 5-minute interval. 
+I create a new dataset that is equal to the original dataset but with the missing data filled in.
+```{r}
+library(plyr)
+impute.mean <- function(x) replace(x, is.na(x), mean(x, na.rm = TRUE))
+fulldata <- ddply(activity, ~ interval, transform, steps = impute.mean(steps)) 
+head(fulldata)
+str(fulldata)
+```
+
+And I made a histogram of the total number of steps taken each day and calculate and report the mean and median total number of steps taken per day. 
+```{r}
+fullsteps <- aggregate(steps ~ date,data = fulldata, FUN = sum)
+hist(fullsteps$steps,col = "Blue", main = "Steps per day", 
+     xlab =  "Steps") 
+mean(fullsteps$steps)
+median(fullsteps$steps)
+```
+
+As the raw data has NA values in hole days (there was or a day with the "full" NA values, or a day without any NA's), after filling this NA's, we got some "extra" days, which don't extremely changed our data (mean and median are on same level) 
+
+###Are there differences in activity patterns between weekdays and weekends?
+
+For this part, I created new variables to understande, which observation is for weekday, and which is for weekend
+```{r}
+Sys.setlocale("LC_TIME", "English") # Give English name of Week Days
+fulldata$weekday <-weekdays(fullsteps$date)
+fulldata$week <- ifelse(fulldata$weekday == "Saturday"|fulldata$weekday == "Sunday", "weekend","weekday")
+head(fulldata)
+```
+
+After that, I made a plot, which show us the differ weekday from weekend.
+```{r}
+library(ggplot2)
+
+g <- ggplot(fulldata, aes(interval, steps))
+g + geom_line(col = "blue") + facet_grid( week~.) + labs(y="Number of steps")+theme_bw()
+
+```
